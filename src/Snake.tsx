@@ -2,6 +2,13 @@ import React, { PureComponent } from 'react';
 
 import './Snake.css';
 
+enum Direction {
+  Up = 'up',
+  Down = 'down',
+  Left = 'left',
+  Right = 'right'
+}
+
 interface ICell {
   x: number,
   y: number,
@@ -13,12 +20,18 @@ interface ISnakeProps {
 
 interface ISnakeState {
   snakeSize: number,
-  snakeCoords: Array<ICell>,
-  direction: string,
+  snakeCoordinates: Array<ICell>,
+  direction: Direction,
+  foodCoordinates: ICell,
 }
 
 const GRAY_COLOR = '#949494';
 const WHITE_COLOR = '#ffffff';
+const FIELD_LENGTH = 20;
+
+const getRandomCoordinate = (cellSize: number): number => Math.floor(Math.random() * FIELD_LENGTH) * cellSize;
+
+const isSameCoordinates = (a: ICell, b: ICell) => a.x === b.x && a.y === b.y;
 
 class Snake extends PureComponent<ISnakeProps, ISnakeState> {
 
@@ -26,17 +39,18 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
   frameId: any;
 
   state = {
+    direction: Direction.Right,
     snakeSize: 5,
-    snakeCoords: [],
-    direction: 'right',
+    snakeCoordinates: [],
+    foodCoordinates: {
+      x: -100,
+      y: -100,
+    },
   };
 
   public componentDidMount() {
-    this.focusCanvas();
-    this.setCanvasSize();
-    this.renderGrid();
-    this.setInitialSnake();
     this.startGame();
+    this.loop();
   }
 
   public focusCanvas() {
@@ -47,7 +61,7 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
     }
   }
 
-  public getCanvasContext() {
+  public getCanvasContext(): CanvasRenderingContext2D | null {
     const { canvas } = this;
 
     if (canvas && canvas.current) {
@@ -62,8 +76,8 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
     const { cellSize } = this.props;
 
     if (canvas && canvas.current) {
-      canvas.current.width = cellSize * 20;
-      canvas.current.height = cellSize * 20;
+      canvas.current.width = cellSize * FIELD_LENGTH;
+      canvas.current.height = cellSize * FIELD_LENGTH;
     }
   };
 
@@ -116,29 +130,31 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
   public setInitialSnake() {
     const { snakeSize } = this.state;
     const { cellSize } = this.props;
-    const snakeCoords = [];
+    const snakeCoordinates = [];
 
     for (let i = snakeSize; i > 0; i--) {
       const part = (i - 1) * cellSize;
 
-      snakeCoords.push({ x: part, y: 0 })
+      snakeCoordinates.push({ x: part, y: 0 })
     }
 
-    this.setState({ snakeCoords }, () => this.renderSnake());
+    this.setState({ snakeCoordinates }, () => this.renderSnake());
   }
 
   public renderSnake() {
-    const { snakeCoords } = this.state;
+    const { snakeCoordinates } = this.state;
 
     this.renderGrid();
-    snakeCoords.forEach((coord: ICell) => this.renderSquare(coord.x, coord.y, WHITE_COLOR));
+    this.renderFood();
+    snakeCoordinates.forEach((coordinate: ICell) => this.renderSquare(coordinate.x, coordinate.y, WHITE_COLOR));
   }
 
   public moveSnake = () => {
     const { cellSize } = this.props;
-    const { direction } = this.state;
-    const snakeCoordsWithoutTail = this.state.snakeCoords.slice(0, -1);
-    let { x, y } = snakeCoordsWithoutTail[0] as ICell;
+    const { direction, foodCoordinates, snakeCoordinates } = this.state;
+    let snakeSize = this.state.snakeSize;
+    let { x, y } = snakeCoordinates[0] as ICell;
+    let newSnakeCoordinates = [];
 
     switch (direction) {
       case 'right':
@@ -157,32 +173,37 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
         return;
     }
 
+    if (isSameCoordinates({ x, y }, foodCoordinates)) {
+      snakeSize++;
+      newSnakeCoordinates = [ { x, y }, ...snakeCoordinates ];
+      this.setFood();
+    } else {
+      newSnakeCoordinates = [ { x, y }, ...snakeCoordinates.slice(0, -1) ]
+    }
+
     this.setState({
-      snakeCoords: [{ x, y }, ...snakeCoordsWithoutTail],
-      direction
+      snakeCoordinates: newSnakeCoordinates,
+      direction,
+      snakeSize
     }, () => this.renderSnake());
   };
 
-  handleKeyDown = (e: any) => {
+  public handleKeyDown = (e: any) => {
     const { direction } = this.state;
     let newDirection = null;
 
-    if (this.frameId) {
-      clearTimeout(this.frameId);
-    }
-
     switch (e.keyCode) {
       case 37:
-        if (direction !== 'left' && direction !== 'right') newDirection = 'left';
+        if (direction !== 'left' && direction !== 'right') newDirection = Direction.Left;
         break;
       case 38:
-        if (direction !== 'up' && direction !== 'down') newDirection = 'up';
+        if (direction !== 'up' && direction !== 'down') newDirection = Direction.Up;
         break;
       case 39:
-        if (direction !== 'left' && direction !== 'right') newDirection ='right';
+        if (direction !== 'left' && direction !== 'right') newDirection = Direction.Right;
         break;
       case 40:
-        if (direction !== 'up' && direction !== 'down') newDirection = 'down';
+        if (direction !== 'up' && direction !== 'down') newDirection = Direction.Down;
         break;
       default:
         return;
@@ -195,14 +216,48 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
     }
   };
 
-  startGame = () => {
+  public setFood() {
+    const { cellSize } = this.props;
+    const { snakeCoordinates } = this.state;
+    const [ x, y ] = [ getRandomCoordinate(cellSize), getRandomCoordinate(cellSize) ];
+
+    if (snakeCoordinates.some(part => isSameCoordinates({ x, y }, part))) {
+      this.setFood();
+
+    } else {
+      this.setState({
+        foodCoordinates: { x, y }
+      });
+    }
+  }
+
+  public renderFood() {
+    const foodCoordinates = this.state.foodCoordinates;
+
+    if (foodCoordinates) {
+      const { x, y } = foodCoordinates;
+
+      this.renderSquare(x, y, WHITE_COLOR);
+    }
+  }
+
+  public startGame() {
+    this.focusCanvas();
+    this.setCanvasSize();
+    this.renderGrid();
+    this.setInitialSnake();
+    this.setFood();
+  }
+
+  public loop = () => {
     setTimeout(() => {
       this.moveSnake();
-      this.frameId = window.requestAnimationFrame(this.startGame);
+      this.renderFood();
+      this.frameId = window.requestAnimationFrame(this.loop);
     }, 100);
   };
 
-  render() {
+  public render() {
     return (
       <div className="wrapper">
         <canvas onKeyDown={this.handleKeyDown} className="canvas" ref={this.canvas} tabIndex={0} />
