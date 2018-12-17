@@ -192,6 +192,10 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
     const { direction } = this.state;
     let newDirection = null;
 
+    if (this.frameId) {
+      clearTimeout(this.frameId);
+    }
+
     switch (e.keyCode) {
       case 37:
         if (direction !== 'left' && direction !== 'right') newDirection = Direction.Left;
@@ -214,6 +218,8 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
         direction: newDirection,
       }, () => this.moveSnake());
     }
+
+    this.loop();
   };
 
   public setFood() {
@@ -241,21 +247,22 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
     }
   }
 
+  public loop = () => {
+    this.frameId = setTimeout(() => {
+      this.moveSnake();
+      this.renderFood();
+      window.requestAnimationFrame(this.loop);
+    }, 100);
+  };
+
   public startGame() {
     this.focusCanvas();
     this.setCanvasSize();
     this.renderGrid();
     this.setInitialSnake();
     this.setFood();
+    this.loop();
   }
-
-  public loop = () => {
-    setTimeout(() => {
-      this.moveSnake();
-      this.renderFood();
-      this.frameId = window.requestAnimationFrame(this.loop);
-    }, 100);
-  };
 
   public render() {
     return (
