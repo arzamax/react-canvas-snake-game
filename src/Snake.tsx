@@ -306,7 +306,7 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
    * @description Changes direction if event keyCode matches with arrows keyCodes.
    */
 
-  public handleKeyDown = (e: any) => {
+  public handleKeyDown = (e: any): void => {
     const { direction } = this.state;
     let newDirection = null;
 
@@ -339,7 +339,7 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
    * @description Sets food random coordinate. Checks collision with snake.
    */
 
-  public setFood() {
+  public setFood(): void {
     const { cellSize } = this.props;
     const { snakeCoordinates } = this.state;
     const [ x, y ] = [ getRandomCoordinate(cellSize), getRandomCoordinate(cellSize) ];
@@ -374,7 +374,7 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
    * @description Main game loop. Checks collision when snake's head hits the body.
    */
 
-  public loop = () => {
+  public loop = (): void => {
     this.timerId = setTimeout(() => {
       const { snakeCoordinates } = this.state;
 
@@ -394,7 +394,7 @@ class Snake extends PureComponent<ISnakeProps, ISnakeState> {
    * @description Starts game, renders grid, snake and food.
    */
 
-  public startGame() {
+  public startGame(): void {
     this.renderGrid();
     this.setInitialSnake();
     this.setFood();
