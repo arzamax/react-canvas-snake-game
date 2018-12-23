@@ -7,6 +7,10 @@ body, html {
 
 .wrapper {
   display: flex;
-  align-items: center;
   justify-content: center;
+}
+
+.scoreboard {
+  margin-left: 20px;
+  font-size: 30px;
 }
